@@ -137,7 +137,12 @@ export default async function InvoiceDetailPage(props: PageProps<'/invoices/[id]
           <TableBody>
             {items.map((it) => (
               <TableRow key={it.id}>
-                <TableCell>{it.description}</TableCell>
+                <TableCell>
+                  <div className="font-medium">{it.product_name}</div>
+                  {it.description && (
+                    <div className="text-xs text-muted-foreground">{it.description}</div>
+                  )}
+                </TableCell>
                 <TableCell className="text-right tabular-nums">{Number(it.quantity)}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmt(Number(it.unit_price))}</TableCell>
                 <TableCell className="text-right tabular-nums">

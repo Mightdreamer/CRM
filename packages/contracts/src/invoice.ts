@@ -65,7 +65,8 @@ export type InvoiceItem = {
   id: string;
   invoice_id: string;
   product_id: string | null;
-  description: string;
+  product_name: string;
+  description: string | null;
   quantity: number;
   unit_price: number;
   discount_pct: number;

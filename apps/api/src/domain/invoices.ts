@@ -16,6 +16,7 @@ import {
   validationError,
 } from '../lib/errors';
 import type { Ctx } from '../middleware/auth';
+import { getProductNamesByIds } from './products';
 
 const QUOTATION_STATUSES_NOT_INVOICEABLE = new Set(['rejected', 'expired']);
 
@@ -46,6 +47,10 @@ export async function createInvoice(
 ): Promise<{ id: string; invoice_number: string }> {
   const db = getDb();
   const totals = computeDocTotals(input.items);
+  const productNames = await getProductNamesByIds(
+    ctx,
+    input.items.map((i) => i.product_id),
+  );
   const invoiceNumber = await nextInvoiceNumber(ctx.businessId);
 
   if (input.quotation_id) {
@@ -103,8 +108,9 @@ export async function createInvoice(
     await tx.insert(invoiceItems).values(
       input.items.map((it, idx) => ({
         invoiceId: header.id,
-        productId: it.product_id ?? null,
-        description: it.description,
+        productId: it.product_id,
+        productName: productNames.get(it.product_id)!,
+        description: it.description ?? null,
         quantity: String(it.quantity),
         unitPrice: String(it.unit_price),
         discountPct: String(it.discount_pct ?? 0),
@@ -140,6 +146,10 @@ export async function updateInvoice(
 ): Promise<{ id: string }> {
   const db = getDb();
   const totals = computeDocTotals(input.items);
+  const productNames = await getProductNamesByIds(
+    ctx,
+    input.items.map((i) => i.product_id),
+  );
 
   const existing = await db
     .select({ status: invoices.status })
@@ -175,8 +185,9 @@ export async function updateInvoice(
     await tx.insert(invoiceItems).values(
       input.items.map((it, idx) => ({
         invoiceId: id,
-        productId: it.product_id ?? null,
-        description: it.description,
+        productId: it.product_id,
+        productName: productNames.get(it.product_id)!,
+        description: it.description ?? null,
         quantity: String(it.quantity),
         unitPrice: String(it.unit_price),
         discountPct: String(it.discount_pct ?? 0),

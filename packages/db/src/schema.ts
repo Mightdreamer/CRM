@@ -210,7 +210,8 @@ export const quotationItems = pgTable(
     productId: uuid('product_id').references(() => products.id, {
       onDelete: 'set null',
     }),
-    description: text('description').notNull(),
+    productName: text('product_name').notNull(),
+    description: text('description'),
     quantity: decimal('quantity', { precision: 14, scale: 4 })
       .notNull()
       .default('1'),
@@ -310,7 +311,8 @@ export const invoiceItems = pgTable(
     productId: uuid('product_id').references(() => products.id, {
       onDelete: 'set null',
     }),
-    description: text('description').notNull(),
+    productName: text('product_name').notNull(),
+    description: text('description'),
     quantity: decimal('quantity', { precision: 14, scale: 4 })
       .notNull()
       .default('1'),

@@ -63,7 +63,8 @@ type DrizzleInvoiceItem = {
   id: string;
   invoiceId: string;
   productId: string | null;
-  description: string;
+  productName: string;
+  description: string | null;
   quantity: string;
   unitPrice: string;
   discountPct: string;
@@ -105,6 +106,7 @@ function itemFromDrizzle(row: DrizzleInvoiceItem): InvoiceItem {
     id: row.id,
     invoice_id: row.invoiceId,
     product_id: row.productId,
+    product_name: row.productName,
     description: row.description,
     quantity: Number(row.quantity),
     unit_price: Number(row.unitPrice),

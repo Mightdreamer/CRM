@@ -50,7 +50,7 @@ export default async function NewInvoicePage(props: PageProps<'/invoices/new'>) 
         terms: selectedRes.data.quotation.terms ?? undefined,
         items: selectedRes.data.items.map<LineItemRow>((it) => ({
           product_id: it.product_id ?? undefined,
-          description: it.description,
+          description: it.description ?? undefined,
           quantity: it.quantity,
           unit_price: it.unit_price,
           discount_pct: it.discount_pct,

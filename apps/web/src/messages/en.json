@@ -306,6 +306,7 @@
       "createProduct": "Create new article",
       "productCreated": "Article created.",
       "description": "Description",
+      "descriptionPlaceholder": "Optional description…",
       "quantity": "Qty",
       "unitPrice": "Unit price",
       "discount": "Disc. %",

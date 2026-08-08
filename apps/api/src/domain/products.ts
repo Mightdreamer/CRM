@@ -1,8 +1,9 @@
-import { and, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { products, type NewProduct } from '@crm/db/schema';
 import type { ProductInput } from '@crm/contracts/product';
 import type { Ctx } from '../middleware/auth';
 import { getDb } from '../lib/db';
+import { validationError } from '../lib/errors';
 
 export type ProductSearchResult = {
   id: string;
@@ -75,6 +76,32 @@ export async function searchProducts(
     .orderBy(products.name)
     .limit(params.limit ?? 5);
   return rows;
+}
+
+export async function getProductNamesByIds(
+  ctx: Ctx,
+  ids: string[],
+): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const db = getDb();
+  const unique = Array.from(new Set(ids));
+  const rows = await db
+    .select({ id: products.id, name: products.name })
+    .from(products)
+    .where(
+      and(
+        eq(products.businessId, ctx.businessId),
+        inArray(products.id, unique),
+      ),
+    );
+  const map = new Map(rows.map((r) => [r.id, r.name]));
+  const missing = unique.filter((id) => !map.has(id));
+  if (missing.length > 0) {
+    throw validationError(
+      `Unknown product${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}`,
+    );
+  }
+  return map;
 }
 
 export { products as productsTable, toRow as productInputToRow };

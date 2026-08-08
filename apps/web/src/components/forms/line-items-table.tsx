@@ -13,7 +13,7 @@ export type { ProductOption } from '@/components/forms/product-combobox';
 
 export type LineItemRow = {
   product_id?: string;
-  description: string;
+  description?: string;
   quantity: number;
   unit_price: number;
   discount_pct: number;
@@ -34,7 +34,6 @@ type Props = {
 
 function emptyRow(): LineItemRow {
   return {
-    description: '',
     quantity: 1,
     unit_price: 0,
     discount_pct: 0,
@@ -81,7 +80,6 @@ export function LineItemsTable({
     const taxRate = p.is_taxable ? (p.tax_rate_override ?? defaultTaxRate) : 0;
     update(i, {
       product_id: p.id,
-      description: p.name,
       unit_price: Number(p.unit_price),
       tax_rate: taxRate,
     });
@@ -122,9 +120,9 @@ export function LineItemsTable({
                   </td>
                   <td className="px-3 py-2">
                     <Input
-                      value={row.description}
+                      value={row.description ?? ''}
                       onChange={(e) => update(i, { description: e.target.value })}
-                      placeholder="—"
+                      placeholder={t('descriptionPlaceholder')}
                     />
                   </td>
                   <td className="px-3 py-2">

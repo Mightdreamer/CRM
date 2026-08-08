@@ -58,6 +58,7 @@ export async function GET(_req: Request, ctxParams: RouteContext<'/api/pdf/quota
         currency: q.currency,
       },
       items: items.map((it) => ({
+        product_name: it.product_name,
         description: it.description,
         quantity: Number(it.quantity),
         unit_price: Number(it.unit_price),

@@ -19,6 +19,7 @@ import {
   validationError,
 } from '../lib/errors';
 import type { Ctx } from '../middleware/auth';
+import { getProductNamesByIds } from './products';
 
 function computeDocumentTotals(items: QuotationInput['items']) {
   return calculateTotals(
@@ -57,6 +58,10 @@ export async function createQuotation(
 ): Promise<{ id: string; quotation_number: string }> {
   const db = getDb();
   const totals = computeDocumentTotals(input.items);
+  const productNames = await getProductNamesByIds(
+    ctx,
+    input.items.map((i) => i.product_id),
+  );
   const quotationNumber = await nextQuotationNumber(ctx.businessId);
 
   return await db.transaction(async (tx) => {
@@ -84,8 +89,9 @@ export async function createQuotation(
     await tx.insert(quotationItems).values(
       input.items.map((it, idx) => ({
         quotationId: header.id,
-        productId: it.product_id ?? null,
-        description: it.description,
+        productId: it.product_id,
+        productName: productNames.get(it.product_id)!,
+        description: it.description ?? null,
         quantity: String(it.quantity),
         unitPrice: String(it.unit_price),
         discountPct: String(it.discount_pct ?? 0),
@@ -108,6 +114,10 @@ export async function updateQuotation(
 ): Promise<{ id: string }> {
   const db = getDb();
   const totals = computeDocumentTotals(input.items);
+  const productNames = await getProductNamesByIds(
+    ctx,
+    input.items.map((i) => i.product_id),
+  );
 
   const existing = await db
     .select({
@@ -149,8 +159,9 @@ export async function updateQuotation(
     await tx.insert(quotationItems).values(
       input.items.map((it, idx) => ({
         quotationId: id,
-        productId: it.product_id ?? null,
-        description: it.description,
+        productId: it.product_id,
+        productName: productNames.get(it.product_id)!,
+        description: it.description ?? null,
         quantity: String(it.quantity),
         unitPrice: String(it.unit_price),
         discountPct: String(it.discount_pct ?? 0),
@@ -281,6 +292,7 @@ export async function convertQuotationToInvoice(
         itemRows.map((it) => ({
           invoiceId: invoiceHeader.id,
           productId: it.productId,
+          productName: it.productName,
           description: it.description,
           quantity: it.quantity,
           unitPrice: it.unitPrice,

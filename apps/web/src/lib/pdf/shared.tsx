@@ -74,6 +74,14 @@ export const pdfStyles = StyleSheet.create({
   colDescription: {
     flex: 4,
   },
+  lineProductName: {
+    fontWeight: 700,
+  },
+  lineDescription: {
+    fontSize: 8,
+    color: '#666666',
+    marginTop: 2,
+  },
   colNumber: {
     flex: 1,
     textAlign: 'right',
@@ -153,7 +161,8 @@ export type CustomerForPdf = {
 };
 
 export type LineForPdf = {
-  description: string;
+  product_name: string;
+  description: string | null;
   quantity: number;
   unit_price: number;
   discount_pct: number;

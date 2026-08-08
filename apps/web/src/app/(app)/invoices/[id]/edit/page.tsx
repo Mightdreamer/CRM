@@ -29,7 +29,7 @@ export default async function EditInvoicePage(props: PageProps<'/invoices/[id]/e
 
   const itemRows = items.map((it) => ({
     product_id: it.product_id ?? undefined,
-    description: it.description,
+    description: it.description ?? undefined,
     quantity: Number(it.quantity),
     unit_price: Number(it.unit_price),
     discount_pct: Number(it.discount_pct),

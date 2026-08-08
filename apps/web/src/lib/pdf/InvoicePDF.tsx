@@ -124,7 +124,12 @@ export function InvoicePDF({ business, customer, invoice, items, labels }: Invoi
           </View>
           {items.map((it, i) => (
             <View key={i} style={s.tableRow}>
-              <Text style={[s.col, s.colDescription]}>{it.description}</Text>
+              <View style={[s.col, s.colDescription]}>
+                <Text style={s.lineProductName}>{it.product_name}</Text>
+                {it.description && (
+                  <Text style={s.lineDescription}>{it.description}</Text>
+                )}
+              </View>
               <Text style={[s.col, s.colSmall]}>{Number(it.quantity)}</Text>
               <Text style={[s.col, s.colNumber]}>{fmt(Number(it.unit_price))}</Text>
               <Text style={[s.col, s.colSmall]}>

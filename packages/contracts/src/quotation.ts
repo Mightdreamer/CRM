@@ -10,12 +10,13 @@ export const quotationStatuses = [
 export type QuotationStatus = (typeof quotationStatuses)[number];
 
 export const lineItemSchema = z.object({
-  product_id: z
+  product_id: z.string().uuid('Pick a product'),
+  description: z
     .string()
-    .uuid()
+    .trim()
+    .max(500)
     .optional()
     .or(z.literal('').transform(() => undefined)),
-  description: z.string().trim().min(1, 'Required').max(500),
   quantity: z.coerce.number().positive('Must be > 0').max(999_999),
   unit_price: z.coerce.number().min(0).max(99_999_999),
   discount_pct: z.coerce.number().min(0).max(1).default(0),
@@ -68,7 +69,8 @@ export type QuotationItem = {
   id: string;
   quotation_id: string;
   product_id: string | null;
-  description: string;
+  product_name: string;
+  description: string | null;
   quantity: number;
   unit_price: number;
   discount_pct: number;

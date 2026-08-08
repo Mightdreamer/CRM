@@ -51,7 +51,8 @@ type DrizzleQuotationItem = {
   id: string;
   quotationId: string;
   productId: string | null;
-  description: string;
+  productName: string;
+  description: string | null;
   quantity: string;
   unitPrice: string;
   discountPct: string;
@@ -90,6 +91,7 @@ function itemFromDrizzle(row: DrizzleQuotationItem): QuotationItem {
     id: row.id,
     quotation_id: row.quotationId,
     product_id: row.productId,
+    product_name: row.productName,
     description: row.description,
     quantity: Number(row.quantity),
     unit_price: Number(row.unitPrice),
