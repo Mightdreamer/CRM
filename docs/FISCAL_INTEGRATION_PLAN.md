@@ -146,8 +146,8 @@ un flag para activar/desactivar la integración.
 **Objetivo:** una capa de acceso al Cloud API que centralice auth, error handling y
 mapeo de errores DGII a mensajes accionables en el CRM.
 
-- [ ] Instalar `@fiscal-platform/shared-contracts` en `apps/api/package.json` (link workspace vía `pnpm add`; si no es viable por rutas cross-repo, copiar los tipos a `packages/contracts/src/fiscal.ts` con un comentario apuntando al origen).
-- [ ] `apps/api/src/lib/fiscal-platform/client.ts` — factory `createFiscalClient(business)` que descifra la API key on-demand y retorna un cliente scoped al business:
+- [x] Instalar `@fiscal-platform/shared-contracts` en `apps/api/package.json` (link workspace vía `pnpm add`; si no es viable por rutas cross-repo, copiar los tipos a `packages/contracts/src/fiscal.ts` con un comentario apuntando al origen).
+- [x] `apps/api/src/lib/fiscal-platform/client.ts` — factory `createFiscalClient(business)` que descifra la API key on-demand y retorna un cliente scoped al business:
   ```ts
   createFiscalClient(business): FiscalClient  // resuelve tenant + api key desde columnas de business
   // FiscalClient:
@@ -157,10 +157,15 @@ mapeo de errores DGII a mensajes accionables en el CRM.
   listDocuments(params: {...}): Promise<{items, nextCursor}>
   listSequences(): Promise<Sequence[]>
   ```
-- [ ] Env vars: `FISCAL_PLATFORM_BASE_URL`, `FISCAL_ENCRYPTION_KEY` (base64, 32 bytes). Fail-fast en `apps/api/src/index.ts` si faltan.
-- [ ] Header en cada request: `Authorization: Bearer ${decryptedApiKey}`, `Content-Type: application/json`. La API key descifrada vive solo en memoria durante el request; no cachearla entre requests.
-- [ ] Timeouts: 30s. Retries: **solo** para 5xx/network (no para 4xx). Backoff exponencial 1s/2s/4s.
-- [ ] Error mapper: convertir `StandardApiError` del fiscal-platform en errores accionables del CRM (ver tabla "Errores esperados" abajo).
+- [x] Env vars: `FISCAL_PLATFORM_BASE_URL`, `FISCAL_ENCRYPTION_KEY` (base64, 32 bytes). Fail-fast en `apps/api/src/index.ts` si faltan.
+- [x] Header en cada request: `Authorization: Bearer ${decryptedApiKey}`, `Content-Type: application/json`. La API key descifrada vive solo en memoria durante el request; no cachearla entre requests.
+- [x] Timeouts: 30s. Retries: **solo** para 5xx/network (no para 4xx). Backoff exponencial 1s/2s/4s.
+- [x] Error mapper: convertir `StandardApiError` del fiscal-platform en errores accionables del CRM (ver tabla "Errores esperados" abajo).
+
+**Notas de ejecución (Fase B):**
+- Completada 2026-08-10. El paquete `@fiscal-platform/shared-contracts` es privado y vive fuera del workspace/build context, por lo que se vendió el subconjunto requerido en `@crm/contracts/fiscal`, trazado al commit `5f4aa80633ad96f89791db61cb12a696fe2c6274`.
+- El cliente usa `fetch` nativo, un intento inicial + tres retries (1s/2s/4s) solo para red/timeout/5xx, y descifra la credencial en cada operación sin retener plaintext.
+- Cobertura: 20 tests del API para crypto, transporte, timeout, retries, rotación de key y error mapping. La aceptación acordada fue local; no se hizo llamada real a TestECF en esta fase.
 
 ### Fase C — Mapper CRM invoice → InvoiceRequest
 

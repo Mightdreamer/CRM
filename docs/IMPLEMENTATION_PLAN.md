@@ -498,8 +498,8 @@ _(Vacío hasta que se ejecute.)_
 
 ## FASE 7 — Integración con facturación electrónica (e-CF DGII)
 
-**Status:** ⏳ Pendiente
-**Iniciada:** —
+**Status:** 🔄 En progreso
+**Iniciada:** 2026-08-10
 **Completada:** —
 **Estimación:** 3-4 semanas
 
@@ -594,7 +594,8 @@ _(Vacío hasta que se ejecute.)_
 
 ### Notas de ejecución
 
-_(Vacío hasta que se ejecute. Documentar especialmente: versión de contratos de fiscal-platform al integrar, decisiones sobre mapeo de campos, casos edge de validación DGII encontrados.)_
+- El diseño detallado y vigente está en [`docs/FISCAL_INTEGRATION_PLAN.md`](./FISCAL_INTEGRATION_PLAN.md); reemplaza los endpoints, webhooks, secuencias locales y credenciales globales descritos originalmente en esta fase.
+- Fases A y B del plan fiscal completadas. Contratos vendorizados desde `fiscal-platform` commit `5f4aa80633ad96f89791db61cb12a696fe2c6274` porque el paquete fuente es privado y está fuera del build context del CRM.
 
 ---
 
