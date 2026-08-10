@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { count, eq } from 'drizzle-orm';
 import { businesses, leads } from '@crm/db/schema';
-import { isValidRNC } from '@crm/core/dgii';
+import { isValidTaxId } from '@crm/core/dgii';
 import {
   leadStatuses,
   leadStatusUpdateSchema,
@@ -205,9 +205,9 @@ route.patch('/businesses/:id/fiscal-provisioning', async (c) => {
         fieldErrors.tax_id = [
           'Business tax_id is empty — set it in profile settings first.',
         ];
-      } else if (!isValidRNC(current.taxId)) {
+      } else if (!isValidTaxId(current.taxId)) {
         fieldErrors.tax_id = [
-          'Business tax_id is not a valid Dominican RNC (check digit fails).',
+          'Business tax_id is not a valid Dominican RNC or Cédula (check digit fails).',
         ];
       }
       if (!nextTenantId) {

@@ -204,6 +204,7 @@ export interface FiscalTotales {
   totalITBIS3?: string;
   montoTotal: string;
   montoNoFacturable?: string;
+  montoAvancePago?: string;
   valorPagar?: string;
 }
 

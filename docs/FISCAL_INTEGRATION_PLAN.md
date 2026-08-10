@@ -122,7 +122,7 @@ un flag para activar/desactivar la integración.
 
 - [x] Helper `apps/api/src/lib/fiscal-platform/crypto.ts` con `encryptApiKey(plaintext)` y `decryptApiKey(bytea)` usando `FISCAL_ENCRYPTION_KEY` (base64, 32 bytes) y `crypto` nativo de Node.
 
-- [x] **Endpoint admin (staff-auth):** `PATCH /v1/admin/businesses/:id/fiscal-provisioning` (+ GET del mismo path) acepta body `{ tenant_id?, api_key?, fiscal_enabled?, fiscal_integration_mode? }`. Al recibir `api_key`: cifra, guarda, regenera `hint`, devuelve solo el hint. Al setear `fiscal_enabled=true`: valida que `tenant_id` + `api_key_encrypted` + `tax_id` del business estén presentes y que el RNC tenga dígito verificador correcto (algoritmo DGII); si no, 422 con detalle.
+- [x] **Endpoint admin (staff-auth):** `PATCH /v1/admin/businesses/:id/fiscal-provisioning` (+ GET del mismo path) acepta body `{ tenant_id?, api_key?, fiscal_enabled?, fiscal_integration_mode? }`. Al recibir `api_key`: cifra, guarda, regenera `hint`, devuelve solo el hint. Al setear `fiscal_enabled=true`: valida que `tenant_id` + `api_key_encrypted` + `tax_id` del business estén presentes y que el RNC o Cédula tenga dígito verificador correcto (algoritmo DGII); si no, 422 con detalle.
 
 - [x] **Endpoint owner:** `PATCH /v1/settings/fiscal` para los campos OWNER-editable (siguiendo la convención existente de `settings.ts` que usa `ctx.businessId`, no `:id` en URL). Retorna 403 si `fiscal_enabled=false`.
 
@@ -173,9 +173,9 @@ mapeo de errores DGII a mensajes accionables en el CRM.
 Cloud API. Es el pedazo más frágil de la integración — cambios en el schema del
 CRM o en los contratos del fiscal-platform rompen esto.
 
-- [ ] `apps/api/src/lib/fiscal-platform/mapper.ts` con función `buildInvoiceRequest(inputs) → InvoiceRequest`.
-- [ ] Inputs: `{ business, customer, invoice, items }` cargados en una sola consulta (`getInvoiceDetail` en `apps/api/src/domain/invoices.ts:410` casi ya lo hace — agregar `business` al join).
-- [ ] Mapeo campo por campo (referencia: `~/Software/fiscal-platform/packages/shared-contracts/typescript/src/dtos/`):
+- [x] `apps/api/src/lib/fiscal-platform/mapper.ts` con función `buildInvoiceRequest(inputs) → InvoiceRequest`.
+- [x] Inputs: `{ business, customer, invoice, items }` cargados por un loader interno tenant-scoped (header/business/customer + items ordenados); no reutilizar `getInvoiceDetail` para evitar exponer datos fiscales del business al frontend.
+- [x] Mapeo campo por campo (referencia: `~/Software/fiscal-platform/packages/shared-contracts/typescript/src/dtos/`):
 
   **Discriminadores:**
   ```
@@ -250,8 +250,15 @@ CRM o en los contratos del fiscal-platform rompen esto.
   valorPagar             = invoice.balance_due.toFixed(2) si difiere de montoTotal
   ```
 
-- [ ] Helpers puros: `formatDateForDgii(iso: string): string` (`YYYY-MM-DD` → `dd-MM-yyyy`), `mapTaxRateToIndicator(rate: string): IndicadorFacturacion`.
-- [ ] Tests unitarios del mapper con casos: E31 con RNC, E32 sin RNC, con múltiples tasas de ITBIS, con descuento por línea, sin descuento.
+- [x] Helpers puros: `formatDateForDgii(iso: string): string` (`YYYY-MM-DD` → `dd-MM-yyyy`), `mapTaxRateToIndicator(rate: string): IndicadorFacturacion`.
+- [x] Tests unitarios del mapper con casos: E31 con RNC, E32 con identificación válida, múltiples tasas de ITBIS, descuentos, pagos previos y validaciones negativas.
+
+**Notas de ejecución (Fase C):**
+- Completada 2026-08-10. Se creó un loader fiscal interno separado; `getInvoiceDetail` no expone business ni credenciales al frontend.
+- Política acordada: solo businesses con `fiscal_enabled=true` reciben validaciones fiscales. Tanto emisor como comprador requieren RNC o Cédula DGII válida; si el default es E31 y el comprador usa Cédula, se emite E32. Businesses sin fiscal conservan el flujo existente.
+- Correcciones al borrador: `montoItem` usa `line_subtotal` (no `line_total`); tasa `0` se trata como Exento; cantidades con más de 2 decimales y monedas distintas de DOP se rechazan para evitar payloads inconsistentes.
+- E32 gravado envía `indicadorMontoGravado=1`, exigido por el Cloud API. Pagos previos se representan conjuntamente como `montoAvancePago` + `valorPagar`.
+- El mapper reconcilia cada línea usando `@crm/core/money` y valida totales/avance antes de construir el DTO. Se agregaron 19 tests del mapper y se corrigió la configuración de Vitest para ejecutar los 13 tests DGII existentes.
 
 ### Fase D — Endpoint de emisión
 
