@@ -1,17 +1,20 @@
 import { Hono } from 'hono';
 import { count, eq } from 'drizzle-orm';
 import { businesses, leads } from '@crm/db/schema';
+import { isValidRNC } from '@crm/core/dgii';
 import {
   leadStatuses,
   leadStatusUpdateSchema,
 } from '@crm/contracts/lead';
+import { businessFiscalProvisioningSchema } from '@crm/contracts/fiscal';
 import {
   getLead,
   listLeads,
   updateLeadStatus,
 } from '../domain/leads';
 import { getDb } from '../lib/db';
-import { validationError } from '../lib/errors';
+import { notFoundError, validationError } from '../lib/errors';
+import { apiKeyHint, encryptApiKey } from '../lib/fiscal-platform/crypto';
 import { noContent, ok } from '../lib/responses';
 import { getStaff, staffMiddleware, type StaffEnv } from '../middleware/staff';
 
@@ -95,6 +98,157 @@ route.patch('/leads/:id', async (c) => {
   }
   await updateLeadStatus(id, parsed.data, staff.userId);
   return noContent(c);
+});
+
+// ---- Business fiscal provisioning ------------------------------------
+//
+// Staff-only. Manages the columns in `businesses` that live behind
+// docs/FISCAL_INTEGRATION_PLAN.md D8 (activation of the fiscal-platform
+// integration is not self-serve — staff pastes tenant_id + API key
+// obtained from fiscal-platform's admin-portal).
+//
+// The plaintext API key is never returned to the client — only the hint
+// (fiscal_platform_api_key_hint, e.g. "fpk_…ab12").
+
+function fiscalProvisioningView(row: {
+  id: string;
+  fiscalEnabled: boolean;
+  fiscalPlatformTenantId: string | null;
+  fiscalPlatformApiKeyHint: string | null;
+  fiscalProvisionedAt: Date | null;
+  fiscalIntegrationMode: string;
+}) {
+  return {
+    id: row.id,
+    fiscal_enabled: row.fiscalEnabled,
+    fiscal_platform_tenant_id: row.fiscalPlatformTenantId,
+    fiscal_platform_api_key_hint: row.fiscalPlatformApiKeyHint,
+    fiscal_provisioned_at: row.fiscalProvisionedAt?.toISOString() ?? null,
+    fiscal_integration_mode: row.fiscalIntegrationMode,
+  };
+}
+
+route.get('/businesses/:id/fiscal-provisioning', async (c) => {
+  const id = c.req.param('id');
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: businesses.id,
+      fiscalEnabled: businesses.fiscalEnabled,
+      fiscalPlatformTenantId: businesses.fiscalPlatformTenantId,
+      fiscalPlatformApiKeyHint: businesses.fiscalPlatformApiKeyHint,
+      fiscalProvisionedAt: businesses.fiscalProvisionedAt,
+      fiscalIntegrationMode: businesses.fiscalIntegrationMode,
+    })
+    .from(businesses)
+    .where(eq(businesses.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw notFoundError('Business not found');
+  return ok(c, fiscalProvisioningView(row));
+});
+
+route.patch('/businesses/:id/fiscal-provisioning', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = businessFiscalProvisioningSchema.safeParse(body);
+  if (!parsed.success) {
+    throw validationError(
+      'Validation failed',
+      parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    );
+  }
+
+  const db = getDb();
+  const currentRows = await db
+    .select({
+      id: businesses.id,
+      taxId: businesses.taxId,
+      fiscalEnabled: businesses.fiscalEnabled,
+      fiscalPlatformTenantId: businesses.fiscalPlatformTenantId,
+      fiscalPlatformApiKeyEncrypted: businesses.fiscalPlatformApiKeyEncrypted,
+      fiscalProvisionedAt: businesses.fiscalProvisionedAt,
+    })
+    .from(businesses)
+    .where(eq(businesses.id, id))
+    .limit(1);
+  const current = currentRows[0];
+  if (!current) throw notFoundError('Business not found');
+
+  const updates: Partial<typeof businesses.$inferInsert> = {};
+
+  if (parsed.data.tenant_id !== undefined) {
+    updates.fiscalPlatformTenantId = parsed.data.tenant_id;
+  }
+  if (parsed.data.api_key !== undefined) {
+    updates.fiscalPlatformApiKeyEncrypted = encryptApiKey(parsed.data.api_key);
+    updates.fiscalPlatformApiKeyHint = apiKeyHint(parsed.data.api_key);
+  }
+  if (parsed.data.fiscal_integration_mode !== undefined) {
+    updates.fiscalIntegrationMode = parsed.data.fiscal_integration_mode;
+  }
+
+  if (parsed.data.fiscal_enabled !== undefined) {
+    updates.fiscalEnabled = parsed.data.fiscal_enabled;
+
+    // Only validate coherence when *activating*. Deactivation is always
+    // permitted (staff may want to pause billing/emission).
+    if (parsed.data.fiscal_enabled) {
+      const nextTenantId =
+        updates.fiscalPlatformTenantId ?? current.fiscalPlatformTenantId;
+      const nextApiKey =
+        updates.fiscalPlatformApiKeyEncrypted ??
+        current.fiscalPlatformApiKeyEncrypted;
+
+      const fieldErrors: Record<string, string[]> = {};
+      if (!current.taxId) {
+        fieldErrors.tax_id = [
+          'Business tax_id is empty — set it in profile settings first.',
+        ];
+      } else if (!isValidRNC(current.taxId)) {
+        fieldErrors.tax_id = [
+          'Business tax_id is not a valid Dominican RNC (check digit fails).',
+        ];
+      }
+      if (!nextTenantId) {
+        fieldErrors.tenant_id = ['Required to enable fiscal.'];
+      }
+      if (!nextApiKey) {
+        fieldErrors.api_key = ['Required to enable fiscal.'];
+      }
+      if (Object.keys(fieldErrors).length > 0) {
+        throw validationError(
+          'Cannot enable fiscal until provisioning is complete',
+          fieldErrors,
+        );
+      }
+
+      // First-ever activation stamps the provisioning date. Toggling
+      // off/on later preserves the original timestamp (grandfathering
+      // relies on this — see D10 in FISCAL_INTEGRATION_PLAN.md).
+      if (!current.fiscalProvisionedAt) {
+        updates.fiscalProvisionedAt = new Date();
+      }
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await db.update(businesses).set(updates).where(eq(businesses.id, id));
+  }
+
+  const finalRows = await db
+    .select({
+      id: businesses.id,
+      fiscalEnabled: businesses.fiscalEnabled,
+      fiscalPlatformTenantId: businesses.fiscalPlatformTenantId,
+      fiscalPlatformApiKeyHint: businesses.fiscalPlatformApiKeyHint,
+      fiscalProvisionedAt: businesses.fiscalProvisionedAt,
+      fiscalIntegrationMode: businesses.fiscalIntegrationMode,
+    })
+    .from(businesses)
+    .where(eq(businesses.id, id))
+    .limit(1);
+  return ok(c, fiscalProvisioningView(finalRows[0]!));
 });
 
 export { route as adminRoute };

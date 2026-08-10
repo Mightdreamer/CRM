@@ -8,9 +8,11 @@ import {
   profileSchema,
   taxSettingsSchema,
 } from '@crm/contracts/settings';
+import { businessFiscalSettingsSchema } from '@crm/contracts/fiscal';
 import { getDb } from '../lib/db';
 import {
   conflictError,
+  forbiddenError,
   notFoundError,
   validationError,
 } from '../lib/errors';
@@ -119,6 +121,50 @@ settings.patch('/numbering', async (c) => {
       invoiceNextNumber: parsed.data.invoice_next_number,
       quotationPrefix: parsed.data.quotation_prefix,
       quotationNextNumber: parsed.data.quotation_next_number,
+    })
+    .where(eq(businesses.id, ctx.businessId));
+  return ok(c, { updated: true });
+});
+
+// Owner-editable fiscal metadata. Only writable when staff has activated
+// the fiscal integration for this business — see FISCAL_INTEGRATION_PLAN.md
+// (D8 + Fase A). Provisioning fields (tenant_id, api_key, fiscal_enabled)
+// live under /v1/admin and are unreachable from here.
+settings.patch('/fiscal', async (c) => {
+  const ctx = getCtx(c);
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = businessFiscalSettingsSchema.safeParse(body);
+  if (!parsed.success) {
+    throw validationError(
+      'Validation failed',
+      parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    );
+  }
+
+  const db = getDb();
+  const rows = await db
+    .select({ fiscalEnabled: businesses.fiscalEnabled })
+    .from(businesses)
+    .where(eq(businesses.id, ctx.businessId))
+    .limit(1);
+  const current = rows[0];
+  if (!current) throw notFoundError('Business not found');
+  if (!current.fiscalEnabled) {
+    throw forbiddenError(
+      'Fiscal integration is not enabled for this business. Contact support to activate.',
+    );
+  }
+
+  await db
+    .update(businesses)
+    .set({
+      fiscalDefaultDocumentType: parsed.data.default_document_type,
+      fiscalDefaultTipoIngresos: parsed.data.default_tipo_ingresos,
+      fiscalTradeName: parsed.data.trade_name ?? null,
+      fiscalBranch: parsed.data.branch ?? null,
+      fiscalEconomicActivity: parsed.data.economic_activity ?? null,
+      fiscalMunicipality: parsed.data.municipality ?? null,
+      fiscalProvince: parsed.data.province ?? null,
     })
     .where(eq(businesses.id, ctx.businessId));
   return ok(c, { updated: true });

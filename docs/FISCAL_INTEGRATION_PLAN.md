@@ -102,7 +102,7 @@ Antes de que el CRM pueda emitir su primer e-CF (en TestECF o producción):
 payload `Emisor` del e-CF, credenciales cifradas para llamar al fiscal-platform, y
 un flag para activar/desactivar la integración.
 
-- [ ] Migración: agregar a `businesses` las columnas. **⚠️ El scope de cada columna determina qué endpoint la puede modificar:**
+- [x] Migración: agregar a `businesses` las columnas. **⚠️ El scope de cada columna determina qué endpoint la puede modificar:**
 
   - **Provisioning (STAFF-ONLY — solo editable vía `/admin/businesses/:id/fiscal`):**
     - `fiscal_enabled boolean not null default false` — toggle maestro; activarlo requiere que las 3 columnas siguientes estén completas
@@ -120,18 +120,26 @@ un flag para activar/desactivar la integración.
     - `fiscal_economic_activity text` — `actividadEconomica`
     - `fiscal_municipality text`, `fiscal_province text` — para `Emisor.municipio/provincia`
 
-- [ ] Helper `apps/api/src/lib/fiscal-platform/crypto.ts` con `encryptApiKey(plaintext)` y `decryptApiKey(bytea)` usando `FISCAL_ENCRYPTION_KEY` (base64, 32 bytes) y `crypto` nativo de Node.
+- [x] Helper `apps/api/src/lib/fiscal-platform/crypto.ts` con `encryptApiKey(plaintext)` y `decryptApiKey(bytea)` usando `FISCAL_ENCRYPTION_KEY` (base64, 32 bytes) y `crypto` nativo de Node.
 
-- [ ] **Endpoint admin (staff-auth):** `PATCH /admin/businesses/:id/fiscal-provisioning` acepta body `{ tenantId?, apiKey?, fiscalEnabled? }`. Al recibir `apiKey`: cifra, guarda, regenera `hint`, devuelve solo el hint. Al setear `fiscalEnabled=true`: valida que `tenant_id` + `api_key_encrypted` + `tax_id` del business estén presentes y que el RNC tenga dígito verificador correcto (algoritmo DGII); si no, 422 con detalle.
+- [x] **Endpoint admin (staff-auth):** `PATCH /v1/admin/businesses/:id/fiscal-provisioning` (+ GET del mismo path) acepta body `{ tenant_id?, api_key?, fiscal_enabled?, fiscal_integration_mode? }`. Al recibir `api_key`: cifra, guarda, regenera `hint`, devuelve solo el hint. Al setear `fiscal_enabled=true`: valida que `tenant_id` + `api_key_encrypted` + `tax_id` del business estén presentes y que el RNC tenga dígito verificador correcto (algoritmo DGII); si no, 422 con detalle.
 
-- [ ] **Endpoint owner:** `PATCH /v1/businesses/:id/fiscal-settings` para los campos OWNER-editable. Retorna 403 si `fiscal_enabled=false` (owner no puede editar metadatos si el feature no está activo).
+- [x] **Endpoint owner:** `PATCH /v1/settings/fiscal` para los campos OWNER-editable (siguiendo la convención existente de `settings.ts` que usa `ctx.businessId`, no `:id` en URL). Retorna 403 si `fiscal_enabled=false`.
 
-- [ ] Actualizar contracts Zod en `packages/contracts/src/settings.ts`:
-  - `businessFiscalProvisioningSchema` (staff-only, incluye `apiKey` opcional plaintext)
+- [x] Contracts Zod en `packages/contracts/src/fiscal.ts` (archivo nuevo — settings.ts se dejó intacto):
+  - `businessFiscalProvisioningSchema` (staff-only, incluye `api_key` opcional plaintext)
   - `businessFiscalSettingsSchema` (owner-facing, solo metadatos del Emisor)
   - Ningún schema devuelve `api_key_encrypted` al cliente — solo el `hint` cuando corresponda.
 
-- [ ] **Registrar en `fiscal_provisioned_at`** el timestamp al primer `fiscalEnabled=true` (para grandfathering; si se desactiva y reactiva, mantener el timestamp original — es la fecha desde la que aplican emisiones).
+- [x] Validador de RNC/Cédula DGII en `packages/core/src/dgii/rnc.ts` con tests (`isValidRNC`, `isValidCedula`, `isValidTaxId`, `detectTaxIdKind`).
+
+- [x] **Registrar en `fiscal_provisioned_at`** el timestamp al primer `fiscalEnabled=true` (para grandfathering; si se desactiva y reactiva, mantener el timestamp original — es la fecha desde la que aplican emisiones).
+
+**Notas de ejecución (Fase A):**
+- Migración: `supabase/migrations/20260810000001_fiscal_integration_phase_a.sql`. Correr con `supabase db push` (o el runner que se use) antes de arrancar la Fase B.
+- Env var nueva: `FISCAL_ENCRYPTION_KEY` (base64, 32 bytes). Agregada a `apps/api/.env.example` con instrucción de generación. **Aún no está en fail-fast del boot** — la validación es lazy dentro de `crypto.ts` (Fase B agrega el fail-fast al arrancar el HTTP client).
+- Fiscal_opt_out en `invoices` también se agregó en esta migración (Fase D lo consume, pero la columna vive desde ya).
+- Constraint DB: `businesses_fiscal_enabled_requires_provisioning_ck` bloquea a nivel Postgres cualquier fila donde `fiscal_enabled=true` pero falte tenant o api_key — defensa adicional al validation del endpoint.
 
 ### Fase B — Cliente HTTP tipado a fiscal-platform
 

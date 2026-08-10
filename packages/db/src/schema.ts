@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  customType,
   date,
   decimal,
   index,
@@ -12,6 +13,14 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+
+// Postgres bytea ⇄ Node Buffer. Used for at-rest ciphertext columns
+// (e.g. fiscal-platform API keys ciphered with AES-256-GCM).
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
 
 // auth.users is managed by Supabase; we only reference its id type.
 // For Drizzle we just use a `uuid` column referencing the string id;
@@ -49,6 +58,21 @@ export const businesses = pgTable('businesses', {
   monthlyPriceDop: decimal('monthly_price_dop', { precision: 14, scale: 2 }),
   pastDueSince: timestamp('past_due_since', { withTimezone: true }),
   cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  // Fiscal integration — staff-only provisioning (see docs/FISCAL_INTEGRATION_PLAN.md)
+  fiscalEnabled: boolean('fiscal_enabled').notNull().default(false),
+  fiscalPlatformTenantId: text('fiscal_platform_tenant_id'),
+  fiscalPlatformApiKeyEncrypted: bytea('fiscal_platform_api_key_encrypted'),
+  fiscalPlatformApiKeyHint: text('fiscal_platform_api_key_hint'),
+  fiscalProvisionedAt: timestamp('fiscal_provisioned_at', { withTimezone: true }),
+  fiscalIntegrationMode: text('fiscal_integration_mode').notNull().default('JSON'),
+  // Fiscal integration — owner-editable Emisor metadata
+  fiscalDefaultDocumentType: text('fiscal_default_document_type').notNull().default('E31'),
+  fiscalDefaultTipoIngresos: text('fiscal_default_tipo_ingresos').notNull().default('01'),
+  fiscalTradeName: text('fiscal_trade_name'),
+  fiscalBranch: text('fiscal_branch'),
+  fiscalEconomicActivity: text('fiscal_economic_activity'),
+  fiscalMunicipality: text('fiscal_municipality'),
+  fiscalProvince: text('fiscal_province'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -279,6 +303,7 @@ export const invoices = pgTable(
       .default('0'),
     currency: text('currency').notNull().default('DOP'),
     fiscalMetadata: jsonb('fiscal_metadata').notNull().default(sql`'{}'::jsonb`),
+    fiscalOptOut: boolean('fiscal_opt_out').notNull().default(false),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdBy: uuid('created_by'),
     createdAt: timestamp('created_at', { withTimezone: true })
