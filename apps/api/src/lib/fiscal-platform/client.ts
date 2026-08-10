@@ -42,7 +42,7 @@ export interface FiscalClient {
 interface ClientDependencies {
   fetch: typeof globalThis.fetch;
   sleep: (ms: number) => Promise<void>;
-  baseUrl: string;
+  baseUrl: string | undefined;
   timeoutMs: number;
 }
 
@@ -117,6 +117,17 @@ export function createFiscalClient(
     path: string,
     options: { method?: 'GET' | 'POST'; body?: unknown } = {},
   ): Promise<T> {
+    if (!deps.baseUrl) {
+      throw new FiscalPlatformError(
+        'FISCAL_PLATFORM_NOT_CONFIGURED',
+        null,
+        'Missing FISCAL_PLATFORM_BASE_URL',
+        'El servicio fiscal todavía no está disponible. Contactar a soporte.',
+        undefined,
+        false,
+      );
+    }
+
     let lastNetworkError: unknown;
 
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {

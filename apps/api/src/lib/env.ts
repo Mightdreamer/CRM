@@ -10,8 +10,9 @@ function optional(name: string, fallback?: string): string | undefined {
   return process.env[name] ?? fallback;
 }
 
-function requiredUrl(name: string): string {
-  const value = required(name);
+function optionalUrl(name: string): string | undefined {
+  const value = optional(name);
+  if (!value) return undefined;
   let url: URL;
   try {
     url = new URL(value);
@@ -58,7 +59,9 @@ export const env = {
   RESEND_API_KEY: optional('RESEND_API_KEY'),
   EMAIL_FROM: optional('EMAIL_FROM'),
   EMAIL_ADMIN_ALERTS: optional('EMAIL_ADMIN_ALERTS'),
-  FISCAL_PLATFORM_BASE_URL: requiredUrl('FISCAL_PLATFORM_BASE_URL'),
+  // The fiscal platform is deployed separately. Keep the API available while
+  // that service has not been provisioned yet; fiscal operations guard this.
+  FISCAL_PLATFORM_BASE_URL: optionalUrl('FISCAL_PLATFORM_BASE_URL'),
   FISCAL_ENCRYPTION_KEY: encryptionKey(),
   FISCAL_PLATFORM_TIMEOUT_MS: positiveInteger(
     'FISCAL_PLATFORM_TIMEOUT_MS',

@@ -70,6 +70,20 @@ function clientWith(fetchMock: typeof fetch, target = business()) {
 describe('fiscal-platform client', () => {
   beforeEach(() => vi.restoreAllMocks());
 
+  it('keeps the API usable when the fiscal platform is not configured', async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    const client = createFiscalClient(business(), {
+      fetch: fetchMock,
+      baseUrl: undefined,
+    });
+
+    await expect(client.listSequences()).rejects.toMatchObject({
+      code: 'FISCAL_PLATFORM_NOT_CONFIGURED',
+      retryable: false,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('calls every operation with the expected method, URL and headers', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
