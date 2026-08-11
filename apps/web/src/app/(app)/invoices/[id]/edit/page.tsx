@@ -36,7 +36,13 @@ export default async function EditInvoicePage(props: PageProps<'/invoices/[id]/e
     tax_rate: Number(it.tax_rate),
   }));
 
-  const { customers, products, defaultTaxRate, defaultPaymentTermsDays } = await loadPickerData();
+  const {
+    customers,
+    products,
+    defaultTaxRate,
+    defaultPaymentTermsDays,
+    fiscalEnabled,
+  } = await loadPickerData();
   const boundAction = updateInvoice.bind(null, id);
 
   return (
@@ -55,12 +61,14 @@ export default async function EditInvoicePage(props: PageProps<'/invoices/[id]/e
         defaultPaymentTermsDays={defaultPaymentTermsDays}
         currency={inv.currency}
         locale={locale}
+        fiscalEnabled={fiscalEnabled}
         defaults={{
           customer_id: inv.customer_id,
           issue_date: inv.issue_date,
           due_date: inv.due_date ?? undefined,
           notes: inv.notes ?? undefined,
           terms: inv.terms ?? undefined,
+          fiscal_opt_out: inv.fiscal_opt_out,
           items: itemRows,
         }}
         action={boundAction}

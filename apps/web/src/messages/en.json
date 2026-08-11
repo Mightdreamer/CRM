@@ -169,7 +169,9 @@
       "status": "Status",
       "currency": "Currency",
       "amountPaid": "Paid",
-      "balanceDue": "Balance due"
+      "balanceDue": "Balance due",
+      "fiscalOptOut": "Do not issue an e-CF for this invoice",
+      "fiscalOptOutHelp": "The invoice will only be issued in the CRM and will not be sent to DGII."
     },
     "status": {
       "draft": "Draft",

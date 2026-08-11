@@ -169,7 +169,9 @@
       "status": "Estado",
       "currency": "Moneda",
       "amountPaid": "Pagado",
-      "balanceDue": "Saldo pendiente"
+      "balanceDue": "Saldo pendiente",
+      "fiscalOptOut": "No emitir e-CF para esta factura",
+      "fiscalOptOutHelp": "La factura se emitirá solo en el CRM y no se enviará a la DGII."
     },
     "status": {
       "draft": "Borrador",

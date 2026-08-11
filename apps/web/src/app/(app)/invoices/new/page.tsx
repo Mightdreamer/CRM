@@ -22,7 +22,14 @@ export default async function NewInvoicePage(props: PageProps<'/invoices/new'>) 
   const t = await getTranslations('invoices');
   const tc = await getTranslations('common');
   const locale = await getLocale();
-  const { customers, products, defaultCurrency, defaultTaxRate, defaultPaymentTermsDays } =
+  const {
+    customers,
+    products,
+    defaultCurrency,
+    defaultTaxRate,
+    defaultPaymentTermsDays,
+    fiscalEnabled,
+  } =
     await loadPickerData();
 
   const [pendingRes, selectedRes] = await Promise.all([
@@ -83,6 +90,7 @@ export default async function NewInvoicePage(props: PageProps<'/invoices/new'>) 
         defaultPaymentTermsDays={defaultPaymentTermsDays}
         currency={formCurrency}
         locale={locale}
+        fiscalEnabled={fiscalEnabled}
         defaults={formDefaults}
         quotationId={quotationId}
         action={createInvoice}

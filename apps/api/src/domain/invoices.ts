@@ -1,6 +1,5 @@
 import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import {
-  businesses,
   customers,
   invoiceItems,
   invoices,
@@ -8,10 +7,13 @@ import {
   quotations,
 } from '@crm/db/schema';
 import type { InvoiceInput, InvoiceStatus } from '@crm/contracts/invoice';
+import {
+  DocumentStatus,
+  type FiscalMetadataSnapshot,
+} from '@crm/contracts/fiscal';
 import type { PaymentInput } from '@crm/contracts/payment';
 import { applyPayments, calculateTotals } from '@crm/core/money';
 import { getDb } from '../lib/db';
-import type { FiscalInvoiceInputs } from '../lib/fiscal-platform/mapper';
 import {
   conflictError,
   notFoundError,
@@ -95,6 +97,7 @@ export async function createInvoice(
         notes: input.notes ?? null,
         terms: input.terms ?? null,
         currency: input.currency,
+        fiscalOptOut: input.fiscal_opt_out,
         status: 'draft',
         subtotal: String(totals.subtotal),
         discountTotal: String(totals.discountTotal),
@@ -174,6 +177,7 @@ export async function updateInvoice(
         notes: input.notes ?? null,
         terms: input.terms ?? null,
         currency: input.currency,
+        fiscalOptOut: input.fiscal_opt_out,
         subtotal: String(totals.subtotal),
         discountTotal: String(totals.discountTotal),
         taxTotal: String(totals.taxTotal),
@@ -273,8 +277,29 @@ export async function changeInvoiceStatus(
   ctx: Ctx,
   id: string,
   target: 'draft' | 'issued' | 'cancelled',
-): Promise<void> {
+): Promise<InvoiceStatus> {
   const db = getDb();
+  const existingRows = await db
+    .select({ fiscalMetadata: invoices.fiscalMetadata })
+    .from(invoices)
+    .where(and(eq(invoices.id, id), eq(invoices.businessId, ctx.businessId)))
+    .limit(1);
+  const existing = existingRows[0];
+  if (!existing) throw notFoundError('Invoice not found');
+  const fiscalMetadata = existing.fiscalMetadata as FiscalMetadataSnapshot;
+  if (
+    target === 'draft' &&
+    fiscalMetadata.status &&
+    [
+      DocumentStatus.ACCEPTED,
+      DocumentStatus.CONDITIONAL_ACCEPTED,
+      DocumentStatus.IN_PROCESS,
+    ].includes(fiscalMetadata.status)
+  ) {
+    throw conflictError(
+      'An accepted or processing fiscal invoice cannot return to draft',
+    );
+  }
   const updated = await db
     .update(invoices)
     .set({ status: target })
@@ -282,6 +307,12 @@ export async function changeInvoiceStatus(
     .returning({ id: invoices.id });
   if (updated.length === 0) throw notFoundError('Invoice not found');
   await recomputeInvoiceStatus(ctx, id);
+  const currentRows = await db
+    .select({ status: invoices.status })
+    .from(invoices)
+    .where(and(eq(invoices.id, id), eq(invoices.businessId, ctx.businessId)))
+    .limit(1);
+  return (currentRows[0]?.status ?? target) as InvoiceStatus;
 }
 
 export async function addPayment(
@@ -458,94 +489,4 @@ export async function getInvoiceDetail(ctx: Ctx, id: string) {
     items,
     payments: paymentRows,
   };
-}
-
-/**
- * Internal fiscal-emission snapshot. Unlike getInvoiceDetail, this function is
- * never returned directly by an API route and intentionally selects only the
- * business fields needed to build the e-CF payload.
- */
-export async function getFiscalInvoiceInputs(
-  ctx: Ctx,
-  id: string,
-): Promise<FiscalInvoiceInputs | null> {
-  const db = getDb();
-  const [headerRows, items] = await Promise.all([
-    db
-      .select({
-        business: {
-          fiscalEnabled: businesses.fiscalEnabled,
-          fiscalDefaultDocumentType: businesses.fiscalDefaultDocumentType,
-          fiscalDefaultTipoIngresos: businesses.fiscalDefaultTipoIngresos,
-          taxId: businesses.taxId,
-          name: businesses.name,
-          legalName: businesses.legalName,
-          email: businesses.email,
-          phone: businesses.phone,
-          address: businesses.address,
-          fiscalTradeName: businesses.fiscalTradeName,
-          fiscalBranch: businesses.fiscalBranch,
-          fiscalEconomicActivity: businesses.fiscalEconomicActivity,
-          fiscalMunicipality: businesses.fiscalMunicipality,
-          fiscalProvince: businesses.fiscalProvince,
-        },
-        customer: {
-          name: customers.name,
-          companyName: customers.companyName,
-          taxId: customers.taxId,
-          email: customers.email,
-          address: customers.address,
-          city: customers.city,
-        },
-        invoice: {
-          id: invoices.id,
-          issueDate: invoices.issueDate,
-          dueDate: invoices.dueDate,
-          currency: invoices.currency,
-          subtotal: invoices.subtotal,
-          discountTotal: invoices.discountTotal,
-          taxTotal: invoices.taxTotal,
-          total: invoices.total,
-          amountPaid: invoices.amountPaid,
-          balanceDue: invoices.balanceDue,
-        },
-      })
-      .from(invoices)
-      .innerJoin(businesses, eq(businesses.id, invoices.businessId))
-      .innerJoin(customers, eq(customers.id, invoices.customerId))
-      .where(
-        and(
-          eq(invoices.id, id),
-          eq(invoices.businessId, ctx.businessId),
-          isNull(invoices.deletedAt),
-        ),
-      )
-      .limit(1),
-    db
-      .select({
-        productName: invoiceItems.productName,
-        description: invoiceItems.description,
-        quantity: invoiceItems.quantity,
-        unitPrice: invoiceItems.unitPrice,
-        discountPct: invoiceItems.discountPct,
-        taxRate: invoiceItems.taxRate,
-        lineSubtotal: invoiceItems.lineSubtotal,
-        lineTax: invoiceItems.lineTax,
-        lineTotal: invoiceItems.lineTotal,
-        sortOrder: invoiceItems.sortOrder,
-      })
-      .from(invoiceItems)
-      .innerJoin(invoices, eq(invoices.id, invoiceItems.invoiceId))
-      .where(
-        and(
-          eq(invoiceItems.invoiceId, id),
-          eq(invoices.businessId, ctx.businessId),
-          isNull(invoices.deletedAt),
-        ),
-      )
-      .orderBy(invoiceItems.sortOrder),
-  ]);
-  const row = headerRows[0];
-  if (!row) return null;
-  return { ...row, items };
 }

@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,12 +29,14 @@ type Props = {
   defaultPaymentTermsDays: number;
   currency: string;
   locale: string;
+  fiscalEnabled: boolean;
   defaults?: {
     customer_id?: string;
     issue_date?: string;
     due_date?: string;
     notes?: string;
     terms?: string;
+    fiscal_opt_out?: boolean;
     items?: LineItemRow[];
   };
   quotationId?: string;
@@ -50,6 +53,7 @@ export function InvoiceForm({
   defaultPaymentTermsDays,
   currency,
   locale,
+  fiscalEnabled,
   defaults,
   quotationId,
   action,
@@ -148,6 +152,22 @@ export function InvoiceForm({
         />
         {err('items') && <p className="text-xs text-red-600 mt-1">{err('items')}</p>}
       </div>
+
+      {fiscalEnabled && (
+        <div className="flex items-start gap-3 rounded-md border p-4 max-w-4xl">
+          <Checkbox
+            id="fiscal_opt_out"
+            name="fiscal_opt_out"
+            defaultChecked={defaults?.fiscal_opt_out ?? false}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="fiscal_opt_out">{t('fields.fiscalOptOut')}</Label>
+            <p className="text-sm text-muted-foreground">
+              {t('fields.fiscalOptOutHelp')}
+            </p>
+          </div>
+        </div>
+      )}
 
       {state && !state.ok && !state.fieldErrors && (
         <p className="text-sm text-red-600">{state.error}</p>

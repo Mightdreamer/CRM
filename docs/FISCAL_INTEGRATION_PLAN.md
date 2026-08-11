@@ -265,7 +265,7 @@ CRM o en los contratos del fiscal-platform rompen esto.
 **Objetivo:** que el CRM dispare el envío al fiscal-platform de forma controlada y
 audite el resultado.
 
-- [ ] Migración: extender `invoices.fiscal_metadata` con campos estructurados
+- [x] Tipar y persistir `invoices.fiscal_metadata` con campos estructurados
   (siguen viviendo en el JSONB, no columnas nuevas):
   ```
   {
@@ -278,15 +278,15 @@ audite el resultado.
     "lastError": { "code": "...", "message": "..." } | null
   }
   ```
-- [ ] Endpoint `POST /v1/invoices/:id/emit-ecf` en `apps/api/src/routes/invoices.ts`:
+- [x] Endpoint `POST /v1/invoices/:id/emit-ecf` en `apps/api/src/routes/invoices.ts`:
   - Valida `business.fiscal_enabled = true`
   - Valida invoice en `issued` (o permite forzar desde `draft` opcionalmente)
   - Valida datos requeridos: business.tax_id, customer.tax_id si E31
   - Corre `buildInvoiceRequest` → `client.submitInvoice(payload)`
   - Persiste `fiscal_metadata` con `documentId`, `eNcf`, `status`, `submittedAt`
   - En error: guarda `lastError` en fiscal_metadata, retorna 502 con detalle
-- [ ] **Migración adicional a `invoices`:** columna `fiscal_opt_out boolean not null default false` — cuando `true`, esta invoice específica NO genera e-CF aunque el business tenga fiscal activo (ver D9). El form UI la expone como checkbox "No emitir e-CF para esta factura".
-- [ ] Hook en `changeInvoiceStatus(id, 'issued')` (`apps/api/src/domain/invoices.ts:270`):
+- [x] **Migración adicional a `invoices`:** columna `fiscal_opt_out boolean not null default false` — cuando `true`, esta invoice específica NO genera e-CF aunque el business tenga fiscal activo (ver D9). El form UI la expone como checkbox "No emitir e-CF para esta factura".
+- [x] Hook en `changeInvoiceStatus(id, 'issued')` (`apps/api/src/domain/invoices.ts`):
   ```ts
   const shouldEmit =
     target === 'issued' &&
@@ -300,8 +300,15 @@ audite el resultado.
     submitInvoiceToFiscal(ctx, id).catch(logError);
   }
   ```
-- [ ] Endpoint `POST /v1/invoices/:id/retry-ecf`: proxy al `POST /api/v1/documents/:documentId/retry`. Solo válido si `fiscal_metadata.status === 'FAILED'`.
-- [ ] Guard: `PATCH /invoices/:id/status` a `draft` no permitido si `fiscal_metadata.status` en {`ACCEPTED`, `CONDITIONAL_ACCEPTED`, `IN_PROCESS`} (una e-CF aceptada no puede volver a draft).
+- [x] Endpoint `POST /v1/invoices/:id/retry-ecf`: proxy al `POST /api/v1/documents/:documentId/retry`. Solo válido si `fiscal_metadata.status === 'FAILED'`.
+- [x] Guard: `PATCH /invoices/:id/status` a `draft` no permitido si `fiscal_metadata.status` en {`ACCEPTED`, `CONDITIONAL_ACCEPTED`, `IN_PROCESS`} (una e-CF aceptada no puede volver a draft).
+
+**Notas de ejecución (Fase D):**
+- Completada 2026-08-11. No se creó una migración para `fiscal_metadata`: el JSONB existente conserva el snapshot mediante el contrato tipado `FiscalMetadataSnapshot`. `fiscal_opt_out` ya había sido agregado por la migración de Fase A.
+- La autoemisión es síncrona tolerante en lugar de fire-and-forget: primero confirma el estado local, luego espera y audita el intento fiscal; un fallo fiscal no revierte ni hace fallar la emisión local. La entrega durable mediante worker/outbox sigue diferida.
+- El submit es idempotente por `externalReference=invoice.id`; las llamadas repetidas con `documentId` local devuelven el snapshot, y una repetición tras fallo de persistencia reconcilia contra la idempotencia del Cloud API.
+- Se agregó el opt-out en crear/editar factura y se endureció `GET /v1/settings` con un allowlist para no serializar credenciales de provisioning al frontend.
+- Verificación local: 49 tests API, 2 tests web y 39 tests core; typecheck API/web y build de producción completos. La inspección visual automatizada no estuvo disponible por configuración del navegador integrado.
 
 ### Fase E — Consulta de estado (polling)
 

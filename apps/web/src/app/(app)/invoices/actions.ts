@@ -25,6 +25,7 @@ function parseFormData(formData: FormData): InvoiceInput | { _error: InvoiceActi
     notes: formData.get('notes'),
     terms: formData.get('terms'),
     currency: formData.get('currency') || 'DOP',
+    fiscal_opt_out: formData.get('fiscal_opt_out') === 'on',
     quotation_id: formData.get('quotation_id'),
     items,
   };

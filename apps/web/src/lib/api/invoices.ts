@@ -5,6 +5,10 @@ import type {
   InvoiceItem,
   InvoiceStatus,
 } from '@crm/contracts/invoice';
+import type {
+  FiscalEmissionResult,
+  FiscalMetadataSnapshot,
+} from '@crm/contracts/fiscal';
 import type { PaymentInput, Payment } from '@crm/contracts/payment';
 import {
   apiDelete,
@@ -53,6 +57,7 @@ type DrizzleInvoice = {
   balanceDue: string;
   currency: string;
   fiscalMetadata: Record<string, unknown>;
+  fiscalOptOut: boolean;
   deletedAt: string | null;
   createdBy: string | null;
   createdAt: string;
@@ -95,6 +100,7 @@ function invoiceFromDrizzle(row: DrizzleInvoice): Invoice {
     balance_due: Number(row.balanceDue),
     currency: row.currency,
     fiscal_metadata: row.fiscalMetadata,
+    fiscal_opt_out: row.fiscalOptOut,
     deleted_at: row.deletedAt,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
@@ -193,7 +199,16 @@ export const updateInvoice = (id: string, input: InvoiceInput) =>
   apiPut<{ id: string }>(`/v1/invoices/${id}`, input);
 
 export const changeInvoiceStatus = (id: string, status: 'draft' | 'issued' | 'cancelled') =>
-  apiPatch<undefined>(`/v1/invoices/${id}/status`, { status });
+  apiPatch<{ status: InvoiceStatus; fiscal: FiscalEmissionResult }>(
+    `/v1/invoices/${id}/status`,
+    { status },
+  );
+
+export const emitInvoiceFiscal = (id: string) =>
+  apiPost<FiscalMetadataSnapshot>(`/v1/invoices/${id}/emit-ecf`);
+
+export const retryInvoiceFiscal = (id: string) =>
+  apiPost<FiscalMetadataSnapshot>(`/v1/invoices/${id}/retry-ecf`);
 
 export const deleteInvoice = (id: string) =>
   apiDelete<undefined>(`/v1/invoices/${id}`);

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { invoiceSchema, invoiceStatuses } from '@crm/contracts/invoice';
 import { paymentSchema } from '@crm/contracts/payment';
+import type { FiscalEmissionResult } from '@crm/contracts/fiscal';
 import {
   addPayment,
   changeInvoiceStatus,
@@ -12,6 +13,11 @@ import {
   updateInvoice,
 } from '../domain/invoices';
 import { notFoundError, validationError } from '../lib/errors';
+import {
+  emitInvoiceAutomatically,
+  emitInvoiceToFiscal,
+  retryInvoiceFiscalEmission,
+} from '../lib/fiscal-platform/emission';
 import { created, noContent, ok } from '../lib/responses';
 import { type AuthEnv, getCtx } from '../middleware/auth';
 
@@ -72,8 +78,29 @@ route.patch('/:id/status', async (c) => {
   if (!['draft', 'issued', 'cancelled'].includes(target)) {
     throw validationError('Invalid status target');
   }
-  await changeInvoiceStatus(ctx, id, target as 'draft' | 'issued' | 'cancelled');
-  return noContent(c);
+  const status = await changeInvoiceStatus(
+    ctx,
+    id,
+    target as 'draft' | 'issued' | 'cancelled',
+  );
+  const fiscal: FiscalEmissionResult =
+    target === 'issued'
+      ? await emitInvoiceAutomatically(ctx, id)
+      : { attempted: false, outcome: 'not_applicable', metadata: {} };
+  return ok(c, { status, fiscal });
+});
+
+route.post('/:id/emit-ecf', async (c) => {
+  const result = await emitInvoiceToFiscal(getCtx(c), c.req.param('id'));
+  return ok(c, result.metadata);
+});
+
+route.post('/:id/retry-ecf', async (c) => {
+  const result = await retryInvoiceFiscalEmission(
+    getCtx(c),
+    c.req.param('id'),
+  );
+  return ok(c, result.metadata);
 });
 
 route.delete('/:id', async (c) => {

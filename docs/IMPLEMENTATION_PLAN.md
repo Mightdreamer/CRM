@@ -596,6 +596,7 @@ _(Vacío hasta que se ejecute.)_
 
 - El diseño detallado y vigente está en [`docs/FISCAL_INTEGRATION_PLAN.md`](./FISCAL_INTEGRATION_PLAN.md); reemplaza los endpoints, webhooks, secuencias locales y credenciales globales descritos originalmente en esta fase.
 - Fases A y B del plan fiscal completadas. Contratos vendorizados desde `fiscal-platform` commit `5f4aa80633ad96f89791db61cb12a696fe2c6274` porque el paquete fuente es privado y está fuera del build context del CRM.
+- 2026-08-11: Completada la Fase D del plan fiscal: emisión manual/automática idempotente, retry, snapshot fiscal, grandfathering y opt-out por factura.
 
 ---
 

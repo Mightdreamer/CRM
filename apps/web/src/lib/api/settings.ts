@@ -42,6 +42,7 @@ export type SettingsRow = {
     footer_text?: string;
     show_logo?: boolean;
   } | null;
+  fiscal_enabled: boolean;
 };
 
 // Drizzle returns camelCase columns; the api now returns a row whose
@@ -66,6 +67,7 @@ type DrizzleSettingsRow = {
   quotationPrefix: string;
   quotationNextNumber: number;
   pdfSettings: SettingsRow['pdf_settings'];
+  fiscalEnabled: boolean;
 };
 
 function camelToSnake(row: DrizzleSettingsRow): SettingsRow {
@@ -88,6 +90,7 @@ function camelToSnake(row: DrizzleSettingsRow): SettingsRow {
     quotation_prefix: row.quotationPrefix,
     quotation_next_number: row.quotationNextNumber,
     pdf_settings: row.pdfSettings,
+    fiscal_enabled: row.fiscalEnabled,
   };
 }
 

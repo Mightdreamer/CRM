@@ -142,6 +142,28 @@ export enum DocumentStatus {
   FAILED = 'FAILED',
 }
 
+export interface FiscalMetadataSnapshot {
+  documentId?: string;
+  eNcf?: string | null;
+  status?: DocumentStatus;
+  trackId?: string | null;
+  submittedAt?: string;
+  lastCheckedAt?: string;
+  lastError?: { code: string; message: string } | null;
+}
+
+export type FiscalEmissionOutcome =
+  | 'not_applicable'
+  | 'submitted'
+  | 'failed'
+  | 'already_submitted';
+
+export interface FiscalEmissionResult {
+  attempted: boolean;
+  outcome: FiscalEmissionOutcome;
+  metadata: FiscalMetadataSnapshot;
+}
+
 export interface FiscalIdDoc {
   version: string;
   tipoeCF: DocumentType;

@@ -23,6 +23,7 @@ export const invoiceHeaderSchema = z.object({
   notes: z.string().trim().max(5000).optional().or(z.literal('').transform(() => undefined)),
   terms: z.string().trim().max(5000).optional().or(z.literal('').transform(() => undefined)),
   currency: z.string().trim().length(3).default('DOP'),
+  fiscal_opt_out: z.boolean().default(false),
   quotation_id: z
     .string()
     .uuid()
@@ -56,6 +57,7 @@ export type Invoice = {
   balance_due: number;
   currency: string;
   fiscal_metadata: Record<string, unknown>;
+  fiscal_opt_out: boolean;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;

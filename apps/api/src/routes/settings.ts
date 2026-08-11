@@ -38,7 +38,27 @@ settings.get('/', async (c) => {
   const ctx = getCtx(c);
   const db = getDb();
   const rows = await db
-    .select()
+    .select({
+      id: businesses.id,
+      name: businesses.name,
+      legalName: businesses.legalName,
+      taxId: businesses.taxId,
+      email: businesses.email,
+      phone: businesses.phone,
+      address: businesses.address,
+      city: businesses.city,
+      country: businesses.country,
+      logoUrl: businesses.logoUrl,
+      defaultCurrency: businesses.defaultCurrency,
+      defaultTaxRate: businesses.defaultTaxRate,
+      defaultPaymentTermsDays: businesses.defaultPaymentTermsDays,
+      invoicePrefix: businesses.invoicePrefix,
+      invoiceNextNumber: businesses.invoiceNextNumber,
+      quotationPrefix: businesses.quotationPrefix,
+      quotationNextNumber: businesses.quotationNextNumber,
+      pdfSettings: businesses.pdfSettings,
+      fiscalEnabled: businesses.fiscalEnabled,
+    })
     .from(businesses)
     .where(eq(businesses.id, ctx.businessId))
     .limit(1);

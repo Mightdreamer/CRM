@@ -11,6 +11,7 @@ export async function loadPickerData(): Promise<{
   defaultCurrency: string;
   defaultTaxRate: number;
   defaultPaymentTermsDays: number;
+  fiscalEnabled: boolean;
 }> {
   await requireBusiness();
 
@@ -40,5 +41,6 @@ export async function loadPickerData(): Promise<{
     defaultCurrency: settingsRes.data.default_currency,
     defaultTaxRate: Number(settingsRes.data.default_tax_rate),
     defaultPaymentTermsDays: Number(settingsRes.data.default_payment_terms_days),
+    fiscalEnabled: settingsRes.data.fiscal_enabled,
   };
 }

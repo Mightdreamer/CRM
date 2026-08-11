@@ -1,7 +1,7 @@
 import { ZodError } from 'zod';
 import type { FieldErrors } from './responses';
 
-type AppErrorStatus = 400 | 401 | 402 | 403 | 404 | 409 | 422 | 429 | 500;
+type AppErrorStatus = 400 | 401 | 402 | 403 | 404 | 409 | 422 | 429 | 500 | 502;
 
 export class AppError extends Error {
   constructor(
@@ -21,6 +21,7 @@ export const forbiddenError = (message = 'Forbidden') =>
 export const conflictError = (message: string) => new AppError(409, message);
 export const validationError = (message: string, fieldErrors?: FieldErrors) =>
   new AppError(422, message, fieldErrors);
+export const badGatewayError = (message: string) => new AppError(502, message);
 
 export function zodToFieldErrors(error: ZodError): FieldErrors {
   const result: FieldErrors = {};
