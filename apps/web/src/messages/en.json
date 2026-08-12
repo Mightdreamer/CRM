@@ -36,7 +36,29 @@
     "magicLink": "Send magic link",
     "magicLinkSent": "Check your email for the magic link.",
     "invalidCredentials": "Invalid email or password.",
-    "signedOut": "You have been signed out."
+    "signedOut": "You have been signed out.",
+    "forgotPassword": "Forgot your password?",
+    "forgotPasswordTitle": "Reset your password",
+    "forgotPasswordDescription": "Enter the email associated with your account and we will send you a code.",
+    "sendCode": "Send code",
+    "sending": "Sending…",
+    "codeSentTo": "We sent a verification code to {email}. Enter it below along with your new password.",
+    "otpLabel": "Verification code",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "changePasswordButton": "Change password",
+    "resendCode": "Resend code",
+    "backToLogin": "Back to sign in",
+    "errors": {
+      "invalid_email": "Enter a valid email address.",
+      "not_configured": "Password reset is not configured on the server yet.",
+      "send_failed": "We could not send the code. Try again in a moment.",
+      "missing_fields": "Enter the code and a new password.",
+      "password_too_short": "Password must be at least 8 characters.",
+      "passwords_dont_match": "Passwords do not match.",
+      "otp_invalid": "The code is invalid or expired.",
+      "update_failed": "We could not update the password. Try again."
+    }
   },
   "assistant": {
     "launcher": "Assistant",

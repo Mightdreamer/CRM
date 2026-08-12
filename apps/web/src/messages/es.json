@@ -36,7 +36,29 @@
     "magicLink": "Enviar enlace mágico",
     "magicLinkSent": "Revise su correo para el enlace mágico.",
     "invalidCredentials": "Correo o contraseña inválidos.",
-    "signedOut": "Sesión cerrada."
+    "signedOut": "Sesión cerrada.",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "forgotPasswordTitle": "Restablece tu contraseña",
+    "forgotPasswordDescription": "Ingresa el correo asociado a tu cuenta y te enviaremos un código.",
+    "sendCode": "Enviar código",
+    "sending": "Enviando…",
+    "codeSentTo": "Enviamos un código de verificación a {email}. Ingrésalo junto con tu nueva contraseña.",
+    "otpLabel": "Código de verificación",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "changePasswordButton": "Cambiar contraseña",
+    "resendCode": "Reenviar código",
+    "backToLogin": "Volver al inicio de sesión",
+    "errors": {
+      "invalid_email": "Ingresa un correo electrónico válido.",
+      "not_configured": "El restablecimiento de contraseña aún no está configurado en el servidor.",
+      "send_failed": "No pudimos enviar el código. Inténtalo de nuevo en un momento.",
+      "missing_fields": "Ingresa el código y una nueva contraseña.",
+      "password_too_short": "La contraseña debe tener al menos 8 caracteres.",
+      "passwords_dont_match": "Las contraseñas no coinciden.",
+      "otp_invalid": "El código es inválido o expiró.",
+      "update_failed": "No pudimos actualizar la contraseña. Inténtalo de nuevo."
+    }
   },
   "assistant": {
     "launcher": "Asistente",
